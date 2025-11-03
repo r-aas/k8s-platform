@@ -56,7 +56,7 @@ spec:
         # Configure Gitea settings
         gitea:
           admin:
-            username: admin
+            username: giteaadmin
             password: gitea123
             email: admin@gitea.local
           config:
