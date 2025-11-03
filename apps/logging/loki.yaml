@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: "6.6.4"
+    helm:
+      values: |
+        deploymentMode: SingleBinary
+        loki:
+          commonConfig:
+            replication_factor: 1
+          storage:
+            type: 'filesystem'
+        singleBinary:
+          replicas: 1
+        chunksCache:
+          enabled: false
+        resultsCache:
+          enabled: false
+        
+        gateway:
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            hosts:
+              - host: loki.127-0-0-1.sslip.io
+                paths:
+                  - path: /
+                    pathType: Prefix
+            tls:
+              - secretName: loki-tls
+                hosts:
+                  - loki.127-0-0-1.sslip.io
+            annotations:
+              cert-manager.io/cluster-issuer: "mkcert-issuer"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

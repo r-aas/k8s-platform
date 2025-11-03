@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minio
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.min.io
+    chart: minio
+    targetRevision: "5.0.15"
+    helm:
+      values: |
+        mode: standalone
+        replicas: 1
+        
+        persistence:
+          enabled: true
+          size: 10Gi
+          
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+            
+        ingress:
+          enabled: true
+          ingressClassName: traefik
+          hosts:
+            - minio.127-0-0-1.sslip.io
+          tls:
+            - secretName: minio-tls
+              hosts:
+                - minio.127-0-0-1.sslip.io
+          annotations:
+            cert-manager.io/cluster-issuer: "mkcert-issuer"
+            
+        consoleIngress:
+          enabled: true
+          ingressClassName: traefik
+          hosts:
+            - minio-console.127-0-0-1.sslip.io
+          tls:
+            - secretName: minio-console-tls
+              hosts:
+                - minio-console.127-0-0-1.sslip.io
+          annotations:
+            cert-manager.io/cluster-issuer: "mkcert-issuer"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: storage
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
