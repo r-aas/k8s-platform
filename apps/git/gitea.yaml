@@ -33,21 +33,9 @@ spec:
           annotations:
             cert-manager.io/cluster-issuer: "mkcert-issuer"
             
-        # Use built-in PostgreSQL for simplicity
+        # Use SQLite for simplicity (no external database needed)
         postgresql:
-          enabled: true
-          primary:
-            persistence:
-              enabled: true
-              storageClass: "local-path"
-              size: 8Gi
-            resources:
-              limits:
-                cpu: 200m
-                memory: 256Mi
-              requests:
-                cpu: 100m
-                memory: 128Mi
+          enabled: false
             
         # Disable HA PostgreSQL to keep it simple
         postgresql-ha:
@@ -81,7 +69,7 @@ spec:
               DISABLE_REGISTRATION: false
               REQUIRE_SIGNIN_VIEW: false
             database:
-              DB_TYPE: postgres
+              DB_TYPE: sqlite3
             session:
               PROVIDER: file
             cache:
