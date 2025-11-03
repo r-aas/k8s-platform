@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gitea-backup
+  namespace: git
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: postgres:15-alpine
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Creating Gitea backup..."
+              BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+              mkdir -p /backup/gitea-$BACKUP_DATE
+              
+              # Backup database
+              PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
+                -h gitea-postgresql \
+                -U gitea \
+                -d gitea \
+                > /backup/gitea-$BACKUP_DATE/database.sql
+              
+              # Backup repositories (if using file storage)
+              if [ -d /data/git/repositories ]; then
+                tar -czf /backup/gitea-$BACKUP_DATE/repositories.tar.gz -C /data git/repositories
+              fi
+              
+              echo "Backup completed: gitea-$BACKUP_DATE"
+              ls -la /backup/
+            env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-postgresql
+                  key: postgres-password
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+            - name: gitea-data
+              mountPath: /data
+              readOnly: true
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: gitea-backup-pvc
+          - name: gitea-data
+            persistentVolumeClaim:
+              claimName: gitea-shared-storage
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-backup-pvc
+  namespace: git
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

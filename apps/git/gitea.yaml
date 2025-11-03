@@ -1,0 +1,94 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://dl.gitea.io/charts/
+    chart: gitea
+    targetRevision: "10.4.1"
+    helm:
+      values: |
+        # Use local-path storage class (built-in to k3s)
+        persistence:
+          enabled: true
+          size: 10Gi
+          storageClass: "local-path"
+          
+        # Configure ingress with our TLS setup
+        ingress:
+          enabled: true
+          className: traefik
+          hosts:
+            - host: gitea.127-0-0-1.sslip.io
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - secretName: gitea-tls
+              hosts:
+                - gitea.127-0-0-1.sslip.io
+          annotations:
+            cert-manager.io/cluster-issuer: "mkcert-issuer"
+            
+        # Use built-in PostgreSQL for simplicity
+        postgresql:
+          enabled: true
+          persistence:
+            storageClass: "local-path"
+            size: 8Gi
+            
+        # Disable HA PostgreSQL to keep it simple
+        postgresql-ha:
+          enabled: false
+          
+        # Service configuration
+        service:
+          http:
+            type: ClusterIP
+            port: 3000
+        
+        # Configure Gitea settings
+        gitea:
+          admin:
+            username: admin
+            password: gitea123
+            email: admin@gitea.local
+          config:
+            server:
+              DOMAIN: gitea.127-0-0-1.sslip.io
+              ROOT_URL: https://gitea.127-0-0-1.sslip.io:8443
+              PROTOCOL: http
+              HTTP_PORT: 3000
+            service:
+              DISABLE_REGISTRATION: false
+              REQUIRE_SIGNIN_VIEW: false
+            database:
+              DB_TYPE: postgres
+            session:
+              PROVIDER: file
+            cache:
+              ADAPTER: memory
+              
+        # Set resource limits for development
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+            
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: git
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    syncWaves:
+      - 2
