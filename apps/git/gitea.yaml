@@ -36,12 +36,27 @@ spec:
         # Use built-in PostgreSQL for simplicity
         postgresql:
           enabled: true
-          persistence:
-            storageClass: "local-path"
-            size: 8Gi
+          primary:
+            persistence:
+              enabled: true
+              storageClass: "local-path"
+              size: 8Gi
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
             
         # Disable HA PostgreSQL to keep it simple
         postgresql-ha:
+          enabled: false
+          
+        # Disable Redis cluster - use memory cache
+        redis:
+          enabled: false
+        redis-cluster:
           enabled: false
           
         # Service configuration
