@@ -90,5 +90,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-    syncWaves:
-      - 2
